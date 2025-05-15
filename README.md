@@ -1,2 +1,176 @@
-# -
-현금,할부,리스 계산 
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>자동차 금융 계산기</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+      max-width: 800px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    label {
+      display: block;
+      margin: 12px 0 4px;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      background-color: #007BFF;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #result {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚗 자동차 금융 계산기</h1>
+
+  <label>차량 기본 가격</label>
+  <input type="number" id="price">
+
+  <label>옵션 가격</label>
+  <input type="number" id="option">
+
+  <label>색상 가격</label>
+  <input type="number" id="color">
+
+  <label>할인 금액</label>
+  <input type="number" id="discount">
+
+  <label>지역 선택</label>
+  <select id="region">
+    <option value="서울">서울</option>
+    <option value="부산">부산</option>
+    <option value="대구">대구</option>
+    <option value="광주">광주</option>
+    <option value="울산">울산</option>
+    <option value="인천">인천</option>
+    <option value="대전">대전</option>
+    <option value="세종">세종</option>
+    <option value="기타">기타</option>
+  </select>
+
+  <label>방식</label>
+  <select id="method" onchange="toggleFields()">
+    <option value="현금">현금</option>
+    <option value="할부">할부</option>
+    <option value="리스">리스</option>
+  </select>
+
+  <div id="financeFields">
+    <label>이자율 (%)</label>
+    <input type="number" id="rate">
+    <label>개월 수</label>
+    <input type="number" id="months">
+  </div>
+
+  <div id="installmentFields" style="display:none">
+    <label>선수금</label>
+    <input type="number" id="down">
+  </div>
+
+  <div id="leaseFields" style="display:none">
+    <label>보증금</label>
+    <input type="number" id="deposit">
+    <label>선수금 (반납 시 소멸)</label>
+    <input type="number" id="lease_down">
+    <label>잔존가치율 (%)</label>
+    <input type="number" id="residual" value="45">
+    <label>부가세율 (%)</label>
+    <input type="number" id="vat" value="10">
+    <label>연 약정 주행거리 (km)</label>
+    <input type="number" id="mileage">
+  </div>
+
+  <button onclick="calculate()">계산하기</button>
+
+  <div id="result"></div>
+
+  <script>
+    function toggleFields() {
+      const method = document.getElementById('method').value;
+      document.getElementById('installmentFields').style.display = method === '할부' ? 'block' : 'none';
+      document.getElementById('leaseFields').style.display = method === '리스' ? 'block' : 'none';
+      document.getElementById('financeFields').style.display = method === '현금' ? 'none' : 'block';
+    }
+
+    function calculate() {
+      const price = +document.getElementById('price').value || 0;
+      const option = +document.getElementById('option').value || 0;
+      const color = +document.getElementById('color').value || 0;
+      const discount = +document.getElementById('discount').value || 0;
+      const total = price + option + color - discount;
+      const region = document.getElementById('region').value;
+      const method = document.getElementById('method').value;
+      const rate = (+document.getElementById('rate').value || 0) / 100 / 12;
+      const months = +document.getElementById('months').value || 0;
+
+      const net = total / 1.1;
+      const tax = net * 0.07;
+
+      const bondRates = {
+        '서울': 0.015, '부산': 0.012, '대구': 0.010,
+        '광주': 0.0075, '울산': 0.007, '인천': 0.010,
+        '대전': 0.009, '세종': 0.009, '기타': 0.009
+      };
+      const bond = net * bondRates[region];
+
+      let result = `🚗 총 차량가격: ${total.toLocaleString()}원<br>`;
+      result += `📄 등록세: ${tax.toLocaleString()}원<br>`;
+      result += `📑 공채비용(${region}): ${bond.toLocaleString()}원<br><br>`;
+
+      if (method === '할부') {
+        const down = +document.getElementById('down').value || 0;
+        const loan = total - down;
+        if (rate && months) {
+          const monthly = loan * rate * Math.pow(1 + rate, months) / (Math.pow(1 + rate, months) - 1);
+          result += `💰 월 납입금: ${monthly.toLocaleString()}원<br>총 납입금: ${(monthly * months + down).toLocaleString()}원`;
+        }
+      } else if (method === '리스') {
+        const deposit = +document.getElementById('deposit').value || 0;
+        const leaseDown = +document.getElementById('lease_down').value || 0;
+        const residual = total * (+document.getElementById('residual').value || 0) / 100;
+        const vat = (+document.getElementById('vat').value || 0) / 100;
+        const mileage = +document.getElementById('mileage').value || 0;
+        const leaseAmount = total - deposit - residual - leaseDown;
+        if (rate && months) {
+          const monthly = leaseAmount * rate * Math.pow(1 + rate, months) / (Math.pow(1 + rate, months) - 1);
+          const monthlyVat = monthly * (1 + vat);
+          result += `💳 월 리스료(부가세 포함): ${monthlyVat.toLocaleString()}원<br>총 납입금: ${(monthlyVat * months + leaseDown).toLocaleString()}원<br>연 주행거리: ${mileage.toLocaleString()} km`;
+        }
+      } else {
+        result += `[현금 구매] 추가 금융 계산 없음.`;
+      }
+
+      document.getElementById('result').innerHTML = result;
+    }
+  </script>
+</body>
+</html>
+
